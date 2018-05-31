@@ -6,6 +6,8 @@ import json
 import logging
 import time
 
+import sys
+
 from collector import web_console
 from collector.collect_task import CollectTask
 
@@ -72,7 +74,7 @@ def launcher():
 
 
 if __name__ == '__main__':
+    # 打印环境变量目录
+    print(sys.path)
     launcher()
     web_console.start_console()
-
-
