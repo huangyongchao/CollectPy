@@ -8,3 +8,10 @@
 ######  如果存在此文件可以直接进行下一步
 #### 服务器上导入依赖
 ###### 1. pip install -r requirements.txt
+
+#### 编译源码成pyc(非必要步骤)
+###### 执行项目下的compliepyc.py
+
+#### 运行项目
+###### 如编译源码成Pyc那么直接运行bin里的start.sh
+###### 也可以直接运行源码的main.py 或者针对各个平台pyinstaller
