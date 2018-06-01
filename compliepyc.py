@@ -8,6 +8,8 @@ import py_compile
 currDir = os.path.dirname(os.path.abspath(__file__))
 dstDir = currDir + "/bin/collector"
 srcDir = currDir + "/collector"
+srcConf = currDir + "/conf/task.json"
+dstConf = currDir + "/bin/conf/task.json"
 
 
 # 清空目录
@@ -45,4 +47,5 @@ def comple_path():
 
 if __name__ == "__main__":
     comple_path()
+    shutil.copyfile(srcConf,dstConf)
     print(".....complie completed")
