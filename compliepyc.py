@@ -2,7 +2,8 @@
 # TODO(huangyongchao): 2018-05-14.
 # TODO: 将项目下的colletor下面的py编译成pyc,放到bin下面的collector下,改文件目录修改会引起寻找文件等异常.
 
-import os, shutil
+import os
+import shutil
 import py_compile
 
 currDir = os.path.dirname(os.path.abspath(__file__))
