@@ -47,5 +47,5 @@ def comple_path():
 
 if __name__ == "__main__":
     comple_path()
-    shutil.copyfile(srcConf,dstConf)
+    shutil.copyfile(srcConf, dstConf)
     print(".....complie completed")
