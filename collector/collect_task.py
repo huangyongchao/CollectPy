@@ -48,9 +48,9 @@ class CollectTask(threading.Thread):
                 collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf)
                 # 更新cct
                 collect_cct.update_cct(taskid, cct, datas, tricing_id, tracingtime)
-            except Exception as e :
-                print("%s exec error  %s " % (taskid,e.__traceback__))
-                logging.error("%s exec error  %s " % (taskid,e.__str__()))
+            except Exception as e:
+                print("%s exec error  %s " % (taskid, e.__traceback__))
+                logging.error("%s exec error  %s " % (taskid, e.__str__()))
 
     def get_mysql_fmt_sql(self, mysql_input, cct):
         """
@@ -59,14 +59,17 @@ class CollectTask(threading.Thread):
         :param cct:
         :return:
         """
+        sql = str(mysql_input['sql'])
         if cct.and_id:
-            return (" %s  where %s  = '%s' and  %s  > %s  order by %s  asc , %s  asc    limit  %s   " % (
-                mysql_input['sql'], mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingid'],
-                cct.tracing_id,
+            condition = ("%s  = '%s' and  %s  > %s  order by %s  asc , %s  asc    limit  %s   " % (
+                mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingid'], cct.tracing_id,
                 mysql_input['tracingtime'],
                 mysql_input['tracingid'], mysql_input['pagesize']))
+            return sql.replace("{conditions}", condition)
+
         else:
 
-            return (" %s  where %s  >= '%s'  order by %s  asc , %s  asc    limit  %s  " % (
-                mysql_input['sql'], mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'],
+            condition = ("%s  >= '%s'  order by %s  asc , %s  asc    limit  %s  " % (
+                mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'],
                 mysql_input['tracingid'], mysql_input['pagesize']))
+            return sql.replace("{conditions}", condition)
