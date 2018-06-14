@@ -10,9 +10,10 @@ from collector import collect_cct, collect_pipe
 
 class CollectTask(threading.Thread):
 
-    def __init__(self, task):
+    def __init__(self, task, suffix):
         threading.Thread.__init__(self)
         self.task = task
+        self.suffix = suffix
 
     def _stop(self):
         super()._stop()
@@ -25,19 +26,20 @@ class CollectTask(threading.Thread):
         tricing_id = self.task['input']['tracingid']
         tracingtime = self.task['input']['tracingtime']
         interval_sec = self.task['interval_sec']
-
+        suffix = self.suffix
         while True:
 
             try:
+                real_taskid = "%s-%s" % (taskid, suffix)
                 time.sleep((interval_sec if (interval_sec > 5) else 30))
 
                 # 获取CCT
-                cct = collect_cct.get_cct(taskid)
+                cct = collect_cct.get_cct(real_taskid)
                 if not cct:
                     cct = collect_cct.get_conf_args(input_conf)
-                logging.info("%s params: %s " % (taskid, cct.__dict__.__str__()))
+                logging.info("%s params: %s " % (real_taskid, cct.__dict__.__str__()))
                 # 根据 input 获取 链接 以及sql
-                sql = self.get_mysql_fmt_sql(input_conf, cct)
+                sql = self.get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
 
                 # 根据sql获取数据集
                 datas = collect_pipe.collect_get_input_data(sql, input_conf=input_conf)
@@ -47,12 +49,12 @@ class CollectTask(threading.Thread):
                 # 输出数据集
                 collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf)
                 # 更新cct
-                collect_cct.update_cct(taskid, cct, datas, tricing_id, tracingtime)
+                collect_cct.update_cct(real_taskid, cct, datas, tricing_id, tracingtime)
             except Exception as e:
-                print("%s exec error  %s " % (taskid, e.__traceback__))
-                logging.error("%s exec error  %s " % (taskid, e.__str__()))
+                print("%s exec error  %s " % (real_taskid, e.__traceback__))
+                logging.error("%s exec error  %s " % (real_taskid, e.__str__()))
 
-    def get_mysql_fmt_sql(self, mysql_input, cct):
+    def get_mysql_fmt_sql(self, mysql_input, cct, suffix):
         """
         根据mysql input配置以及cct获取执行的sql
         :param mysql_input:
@@ -65,11 +67,11 @@ class CollectTask(threading.Thread):
                 mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingid'], cct.tracing_id,
                 mysql_input['tracingtime'],
                 mysql_input['tracingid'], mysql_input['pagesize']))
-            return sql.replace("{conditions}", condition)
+            return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
 
         else:
 
             condition = ("%s  >= '%s'  order by %s  asc , %s  asc    limit  %s  " % (
                 mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'],
                 mysql_input['tracingid'], mysql_input['pagesize']))
-            return sql.replace("{conditions}", condition)
+            return sql.replace("{conditions}", condition).replace("{suffix}", suffix)

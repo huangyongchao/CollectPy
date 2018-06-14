@@ -15,7 +15,8 @@
       "tracingtime": "update_time",
       "tracingid_val": "-1",
       "tracingtime_val": "2017-01-01",
-      "sql": "select * from  complete_product where  {conditions}"
+      "suffix":["1701","1702"],
+      "sql": "select * from  complete_product_{suffix} where  {conditions}"
     },
     "filter": {
       "time_fmt": {

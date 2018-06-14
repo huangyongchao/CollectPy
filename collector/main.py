@@ -55,8 +55,13 @@ def start_task(taskconf):
     :return: None
     """
     for task in list(taskconf):
-        task_thread = CollectTask(task)
-        task_thread.start()
+        if hasattr(task["input"], "suffix"):
+            for suffix in task["input"]["suffix"]:
+                task_thread = CollectTask(task, suffix=suffix)
+                task_thread.start()
+        else:
+            task_thread = CollectTask(task, "")
+            task_thread.start()
     logging.info("tasks started !")
 
 
