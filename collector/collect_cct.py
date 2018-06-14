@@ -98,6 +98,7 @@ def update_cct(taskid, cct, datas, tricing_id, tracingtime):
         if cct.and_id:
             cct.tracing_time = str(datetime.strptime(cct.tracing_time, '%Y-%m-%d %H:%M:%S') + timedelta(seconds=1))
             cct.tracing_id = -1
+            cct.and_id = False
         else:
             pass
     else:
