@@ -8,19 +8,19 @@
         "port": 3306,
         "user": "yiqifatest",
         "passwd": "yiqifatest",
-        "db": "yiqifa_high_goods"
+        "db": "yiqifa_bs"
       },
       "pagesize": "2",
       "tracingid": "id",
       "tracingtime": "update_time",
       "tracingid_val": "-1",
       "tracingtime_val": "2017-01-01",
-      "suffix":["1701","1702"],
-      "sql": "select * from  complete_product_{suffix} where  {conditions}"
+      "suffix":["1803","1804","1805"],
+      "sql": "select * from  cps_effect_confirm_log_{suffix} where  {conditions}"
     },
     "filter": {
       "time_fmt": {
-        "fields": ["update_time","create_time","system_update_time","start_date","end_date"],
+        "fields": ["update_time","create_time","confirm_time","click_time","settlement_time","submit_time","start_date","end_date"],
         "fmt": "%Y-%m-%d %H:%M:%S"
       },
       "camel_case": true
@@ -30,22 +30,22 @@
         "type": "elasticsearch",
         "nodes": ["221.122.127.201: 9200", "221.122.127.101: 9200","221.122.127.68: 9200"],
         "auth": "elastic,changeme",
-        "index": "logstash_product",
+        "index": "logstash_order_test1",
         "doctype": "doc",
         "docid": "id"
       },
       {
         "type": "kafka",
         "nodes": [ "221.122.127.54:9092","221.122.127.22:9092","221.122.127.58:9092"],
-        "topic": "testcollect"
+        "topic": "order_test"
       },
       {
         "type": "redis",
         "nodes": ["221.122.127.103: 14000", "221.122.127.127:14000"],
         "datatype": "string",
-        "key": "pd:%s%s",
-        "keyfields":["product_id","advertiser_name","advertiser_id"],
-        "expiresec":1000,
+        "key": "order:%s%s",
+        "keyfields":["order_no","product_no"],
+        "expiresec":1600,
         "hkey": "pd:%s",
         "hkeyfields": "pd:%s",
         "valuetype":"json"

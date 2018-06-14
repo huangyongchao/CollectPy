@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import logging
+
 import MySQLdb
+import datetime
 from elasticsearch import helpers, Elasticsearch
 from kafka import KafkaProducer
 import json
@@ -25,8 +28,11 @@ def collect_filter(datas, filter_conf):
         if timefmt:
             fmt = filter_conf['time_fmt']['fmt']
             for field in filter_conf['time_fmt']['fields']:
-                if rec[field]:
-                    rec[field] = CollectFilter.time_fmt(rec[field], fmt)
+                if field in rec and  rec[field] != None :
+                    try:
+                        rec[field] = CollectFilter.time_fmt(rec[field], fmt)
+                    except:
+                        rec[field] = None
         if camelcase:
             pass
     return datas
@@ -36,6 +42,8 @@ def collect_output(datas, outputs_conf):
     for outputconf in outputs_conf:
 
         if outputconf['type'] == 'elasticsearch':
+            logging.info("send to elasticsearch start : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
             index = outputconf['index']
             doctype = outputconf['doctype']
             docid = outputconf['docid']
@@ -54,8 +62,11 @@ def collect_output(datas, outputs_conf):
 
             if len(actions) > 0:
                 helpers.bulk(es, actions)
+            logging.info("send to elasticsearch end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         elif outputconf['type'] == 'redis':
+            logging.info("send to redis start : %s  " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
             nodes = [{"host": str(x).split(":")[0], "port": str(x).split(":")[1]} for x in outputconf['nodes']]
             rc = StrictRedisCluster(
                 startup_nodes=nodes,
@@ -76,8 +87,8 @@ def collect_output(datas, outputs_conf):
                     if n > 0:
                         kf = ''
                         for f in keyfields[0:n]:
-                            kf += ",'" + rec[f]+"'"
-                        realk = eval( "'" + key+ "'"+ " %( " + kf[1 : kf.__len__()] + ") ")
+                            kf += ",'" + rec[f] + "'"
+                        realk = eval("'" + key + "'" + " %( " + kf[1: kf.__len__()] + ") ")
 
                     if valuetype == "json":
                         if expiresec and (expiresec > 0):
@@ -94,13 +105,17 @@ def collect_output(datas, outputs_conf):
                     if valuetype == "json":
                         pass
 
+            logging.info("send to redis end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         elif outputconf['type'] == 'kafka':
+            logging.info("send to kafka start : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
             bootstrap_servers = outputconf['nodes']
             topic = outputconf['topic']
             producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
             for rec in datas:
                 producer.send(topic, json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
+            logging.info("send to kafka end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         else:
             pass

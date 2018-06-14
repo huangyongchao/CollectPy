@@ -4,6 +4,7 @@
 import logging
 import threading
 import time
+import traceback
 
 from collector import collect_cct, collect_pipe
 
@@ -40,19 +41,25 @@ class CollectTask(threading.Thread):
                 logging.info("%s params: %s " % (real_taskid, cct.__dict__.__str__()))
                 # 根据 input 获取 链接 以及sql
                 sql = self.get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
-
+                logging.info("%s has generated  sql %s: " % (real_taskid, sql))
                 # 根据sql获取数据集
                 datas = collect_pipe.collect_get_input_data(sql, input_conf=input_conf)
+                logging.info("%s  has queried data . " % real_taskid)
 
                 # 过滤数据集
                 datas_filtered = collect_pipe.collect_filter(datas, filter_conf=filter_conf)
+
+                logging.info("%s  has filtered data . " % real_taskid)
+
                 # 输出数据集
                 collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf)
                 # 更新cct
                 collect_cct.update_cct(real_taskid, cct, datas, tricing_id, tracingtime)
+                logging.info("%s exec over . " % real_taskid)
             except Exception as e:
-                print("%s exec error  %s " % (real_taskid, e.__traceback__))
-                logging.error("%s exec error  %s " % (real_taskid, e.__str__()))
+                msg = traceback.format_exc()
+                print("%s exec error  %s " % (real_taskid, msg))
+                logging.error("%s exec error  %s " % (real_taskid, msg))
 
     def get_mysql_fmt_sql(self, mysql_input, cct, suffix):
         """

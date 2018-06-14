@@ -55,7 +55,7 @@ def start_task(taskconf):
     :return: None
     """
     for task in list(taskconf):
-        if hasattr(task["input"], "suffix"):
+        if "suffix" in task["input"]:
             for suffix in task["input"]["suffix"]:
                 task_thread = CollectTask(task, suffix=suffix)
                 task_thread.start()

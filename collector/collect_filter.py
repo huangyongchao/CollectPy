@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 import datetime
 
+
 class CollectFilter:
     @staticmethod
     def time_fmt(in_time, fmt):
-        return in_time.strftime(fmt)
+        if type(in_time) == str:
+            # return datetime.datetime.strptime(in_time,fmt)
+            return in_time
+
+        elif type(in_time) == datetime.datetime:
+            return in_time.strftime(fmt)
 
     @staticmethod
     def camel_case(input_str, separator):
