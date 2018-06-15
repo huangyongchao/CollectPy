@@ -28,7 +28,7 @@ def application(environ, start_response):
 
 def start_console():
     # 创建一个服务器，IP地址为空，端口是8000，处理函数是application:
-    httpd = make_server('127.0.0.1', 8000, application)
-    print('Serving HTTP on 127.0.0.1:8000...')
+    httpd = make_server('127.0.0.1', sys_conf.CONSOLE_PORT, application)
+    print('WebConsole Serving HTTP on 127.0.0.1:%s...' % sys_conf.CONSOLE_PORT)
     # 开始监听HTTP请求:
     httpd.serve_forever()
