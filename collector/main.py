@@ -8,7 +8,7 @@ import time
 
 import sys
 
-from collector import web_console
+from collector import web_console, sys_conf
 from collector.collect_task import CollectTask
 
 
@@ -18,9 +18,8 @@ def init_log():
     :return None:
     """
     filename = "../logs/collector"
-    log_level = logging.INFO
 
-    logging.basicConfig(level=log_level,
+    logging.basicConfig(level=sys_conf.LOGGING_LEVEL,
                         format='%(asctime)s %(filename)s  %(funcName)s %(lineno)d %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
                         filename=filename + '.%s.log' % time.strftime("%Y-%m-%d"))

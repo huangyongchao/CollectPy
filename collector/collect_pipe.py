@@ -83,17 +83,19 @@ def collect_output(datas, outputs_conf, suffix):
             valuetype = outputconf['valuetype']
             expiresec = outputconf['expiresec']
             for rec in datas:
-                if datatype == "string":
-                    realk = key
-                    n = str(key).count("%s")
-                    if n > 0:
-                        kf = ''
-                        for f in keyfields[0:n]:
-                            kf += ",'" + ("" if (rec[f] == None) else rec[f]) + "'"
-                        realk = eval("'" + key + "'" + " %( " + kf[1: kf.__len__()] + ") ")
 
+                realk = key
+                n = str(key).count("%s")
+                if n > 0:
+                    kf = ''
+                    for f in keyfields[0:n]:
+                        kf += ",'" + ("" if (rec[f] == None) else rec[f]) + "'"
+                    realk = eval("'" + key + "'" + " %( " + kf[1: kf.__len__()] + ") ")
+
+                realk = str(realk).replace("{suffix}", suffix)
+
+                if datatype == "string":
                     if valuetype == "json":
-                        realk = str(realk).replace("{suffix}", suffix)
                         if expiresec and (expiresec > 0):
                             rc.set(realk, json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode(),
                                    ex=expiresec)
@@ -105,6 +107,9 @@ def collect_output(datas, outputs_conf, suffix):
                     if valuetype == "json":
                         pass
                 elif datatype == "list":
+                    if valuetype == "json":
+                        pass
+                elif datatype == "set":
                     if valuetype == "json":
                         pass
 

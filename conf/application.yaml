@@ -1,0 +1,10 @@
+logging:
+  "level": "INFO"
+cctredis:
+  "nodes": [{"host": "221.122.127.103","port": "14000"},{"host": "221.122.127.127","port": "14000"}]
+  "expire_seconds": 20000
+  "max_connections": 20
+  "prefix": "collect_py_"
+
+
+
