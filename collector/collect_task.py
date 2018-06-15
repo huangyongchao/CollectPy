@@ -52,7 +52,7 @@ class CollectTask(threading.Thread):
                 logging.info("%s  has filtered data . " % real_taskid)
 
                 # 输出数据集
-                collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf)
+                collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf,suffix=suffix)
                 # 更新cct
                 collect_cct.update_cct(real_taskid, cct, datas, tricing_id, tracingtime)
                 logging.info("%s exec over . " % real_taskid)

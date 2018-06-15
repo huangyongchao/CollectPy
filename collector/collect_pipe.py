@@ -28,7 +28,7 @@ def collect_filter(datas, filter_conf):
         if timefmt:
             fmt = filter_conf['time_fmt']['fmt']
             for field in filter_conf['time_fmt']['fields']:
-                if field in rec and  rec[field] != None :
+                if field in rec and rec[field] != None:
                     try:
                         rec[field] = CollectFilter.time_fmt(rec[field], fmt)
                     except:
@@ -38,7 +38,7 @@ def collect_filter(datas, filter_conf):
     return datas
 
 
-def collect_output(datas, outputs_conf):
+def collect_output(datas, outputs_conf, suffix):
     for outputconf in outputs_conf:
 
         if outputconf['type'] == 'elasticsearch':
@@ -53,7 +53,9 @@ def collect_output(datas, outputs_conf):
             es = Elasticsearch(nodes,
                                http_auth=tuple(outputconf['auth']))
             for rec in datas:
-                action = {"_index": index, "_type": doctype, "_id": rec[docid], "_source": rec}
+                action = {"_index": str(index).replace("{suffix}", suffix),
+                          "_type": str(doctype).replace("{suffix}", suffix), "_id": rec[docid],
+                          "_source": rec}
                 i += 1
                 actions.append(action)
                 if len(actions) == 2000:
@@ -87,10 +89,11 @@ def collect_output(datas, outputs_conf):
                     if n > 0:
                         kf = ''
                         for f in keyfields[0:n]:
-                            kf += ",'" + rec[f] + "'"
+                            kf += ",'" + ("" if (rec[f] == None) else rec[f]) + "'"
                         realk = eval("'" + key + "'" + " %( " + kf[1: kf.__len__()] + ") ")
 
                     if valuetype == "json":
+                        realk = str(realk).replace("{suffix}", suffix)
                         if expiresec and (expiresec > 0):
                             rc.set(realk, json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode(),
                                    ex=expiresec)
@@ -114,7 +117,8 @@ def collect_output(datas, outputs_conf):
             topic = outputconf['topic']
             producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
             for rec in datas:
-                producer.send(topic, json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
+                producer.send(str(topic).replace("{suffix}", suffix),
+                              json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
             logging.info("send to kafka end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         else:

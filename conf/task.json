@@ -1,6 +1,6 @@
 [
   {
-    "taskid": "test3",
+    "taskid": "test4",
     "interval_sec": 10,
     "input": {
       "mysql": {
@@ -10,7 +10,7 @@
         "passwd": "yiqifatest",
         "db": "yiqifa_bs"
       },
-      "pagesize": "2",
+      "pagesize": "5",
       "tracingid": "id",
       "tracingtime": "update_time",
       "tracingid_val": "-1",
@@ -30,7 +30,7 @@
         "type": "elasticsearch",
         "nodes": ["221.122.127.201: 9200", "221.122.127.101: 9200","221.122.127.68: 9200"],
         "auth": "elastic,changeme",
-        "index": "logstash_order_test1",
+        "index": "logstash_order_test{suffix}",
         "doctype": "doc",
         "docid": "id"
       },
@@ -43,7 +43,7 @@
         "type": "redis",
         "nodes": ["221.122.127.103: 14000", "221.122.127.127:14000"],
         "datatype": "string",
-        "key": "order:%s%s",
+        "key": "{suffix}_order:%s%s",
         "keyfields":["order_no","product_no"],
         "expiresec":1600,
         "hkey": "pd:%s",
