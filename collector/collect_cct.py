@@ -8,9 +8,9 @@ from rediscluster import StrictRedisCluster
 import threading
 from collector import sys_conf
 
-__REDIS_CON = StrictRedisCluster(
+REDIS_CON = StrictRedisCluster(
     startup_nodes=sys_conf.CCT_REDIS_NODES,
-    decode_responses=True,
+    skip_full_coverage_check=True,
     max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
 
 CCT_LOCAL = threading.local()
@@ -30,7 +30,7 @@ def set_cct(task_id, cct):
 
     """
     CCT_LOCAL.cct = cct.__dict__;
-    __REDIS_CON.set(get_key(task_id), cct.__dict__, sys_conf.CCT_REDIS_EXPIRETIME)
+    REDIS_CON.set(get_key(task_id), cct.__dict__, sys_conf.CCT_REDIS_EXPIRETIME)
 
 
 def get_cct(task_id):
@@ -52,7 +52,7 @@ def get_cct(task_id):
     except:
         pass
 
-    cache_cct = __REDIS_CON.get(get_key(task_id))
+    cache_cct = REDIS_CON.get(get_key(task_id))
     if cache_cct:
 
         cct.__dict__ = eval(cache_cct)

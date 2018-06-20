@@ -13,5 +13,6 @@
 ###### 执行项目下的compliepyc.py
 
 #### 运行项目
+###### export PYTHONPATH=$PYTHONPATH:(项目Linux路径)
 ###### 如编译源码成Pyc那么直接运行bin里的start.sh
 ###### 也可以直接运行源码的main.py 或者针对各个平台pyinstaller

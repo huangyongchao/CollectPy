@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import MySQLdb
 import datetime
+
+import pymysql
 from elasticsearch import helpers, Elasticsearch
 from kafka import KafkaProducer
 import json
@@ -13,10 +14,12 @@ from collector import sys_conf, json_encoder
 
 from collector.collect_filter import CollectFilter
 
-
+pymysql.install_as_MySQLdb()
 def collect_get_input_data(sql, input_conf):
-    conn = MySQLdb.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
-    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+
+    conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     cursor.execute(sql)
     return cursor.fetchall()
 
@@ -69,11 +72,9 @@ def collect_output(datas, outputs_conf, suffix):
         elif outputconf['type'] == 'redis':
             logging.info("send to redis start : %s  " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-            nodes = [{"host": str(x).split(":")[0], "port": str(x).split(":")[1]} for x in outputconf['nodes']]
+            nodes = outputconf['nodes']
             rc = StrictRedisCluster(
-                startup_nodes=nodes,
-                decode_responses=True,
-                max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
+                 startup_nodes=nodes,   skip_full_coverage_check=True,max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
 
             datatype = outputconf['datatype']
             key = outputconf['key']

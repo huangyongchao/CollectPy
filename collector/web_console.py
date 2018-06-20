@@ -2,26 +2,19 @@
 from wsgiref.simple_server import make_server
 
 # 自己编写的application函数:
-from rediscluster import StrictRedisCluster
 
-from collector import sys_conf, main
+from collector import sys_conf, main, collect_cct
 
 
 def application(environ, start_response):
     start_response('200 OK', [('Content-Type', 'text/html')])
-
-    __REDIS_CON = StrictRedisCluster(
-        startup_nodes=sys_conf.CCT_REDIS_NODES,
-        decode_responses=True,
-        max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
-
     tasks = main.init_task_conf()
     taskids = [t["taskid"] for t in tasks]
 
     body = ''
     for tid in taskids:
         body += "<b>" + tid + ":</b>  "
-        body += str((__REDIS_CON.get(sys_conf.CCT_PREFIX + tid)))
+        body += str((collect_cct.get_cct() .REDIS_CON.get(sys_conf.CCT_PREFIX + tid)))
 
     return [body.encode('utf-8')]
 
