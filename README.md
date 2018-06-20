@@ -38,3 +38,8 @@ pip install -r requirements.txt
 export PYTHONPATH=$PYTHONPATH:{project_dir}
 ```
 > 这种方法是设置linux环境变量,执行py程序会自动追加路径到sys.path的目录下，也可以通过程序追加进去 
+
+7.进入collector目录下执行主程序(over!!!!)
+```
+python main.py
+```
