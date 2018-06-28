@@ -44,7 +44,7 @@ class CollectTask(threading.Thread):
                 logging.info("%s has generated  sql %s: " % (real_taskid, sql))
                 # 根据sql获取数据集
                 datas = collect_pipe.collect_get_input_data(sql, input_conf=input_conf)
-                logging.info("%s  has queried data . " % real_taskid)
+                logging.info("%s  has queried data . %s" % (real_taskid,datas.__len__()))
 
                 # 过滤数据集
                 datas_filtered = collect_pipe.collect_filter(datas, filter_conf=filter_conf)
@@ -52,7 +52,7 @@ class CollectTask(threading.Thread):
                 logging.info("%s  has filtered data . " % real_taskid)
 
                 # 输出数据集
-                collect_pipe.collect_output(datas_filtered, outputs_conf=outputs_conf,suffix=suffix)
+                collect_pipe.collect_output(real_taskid,cct,datas_filtered, outputs_conf=outputs_conf,suffix=suffix)
                 # 更新cct
                 collect_cct.update_cct(real_taskid, cct, datas, tricing_id, tracingtime)
                 logging.info("%s exec over . " % real_taskid)
