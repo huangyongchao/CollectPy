@@ -47,7 +47,7 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
     global out_stats
 
     task_state = "%s%s" % (str(cct.__dict__), datas.__len__())
-    if (not out_stats.has_key(taskid)) or out_stats[taskid] != task_state:
+    if (not out_stats.__contains__(taskid)) or out_stats[taskid] != task_state:
         for outputconf in outputs_conf:
 
             if outputconf['type'] == 'elasticsearch':

@@ -4,8 +4,6 @@
 
 import json
 import logging
-import time
-
 import sys
 
 from collector import web_console, sys_conf
@@ -22,7 +20,7 @@ def init_log():
     logging.basicConfig(level=sys_conf.LOGGING_LEVEL,
                         format='%(asctime)s %(filename)s  %(funcName)s %(lineno)d %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
-                        filename=filename + '.%s.log' % time.strftime("%Y-%m-%d"))
+                        filename=filename + '.log')
 
 
 def init_task_conf():
