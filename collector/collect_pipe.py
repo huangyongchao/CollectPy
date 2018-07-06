@@ -1,22 +1,21 @@
 # -*- coding: utf-8 -*-
-import logging
-
 import datetime
+import json
+import logging
+import threading
 
 import pymysql
 from elasticsearch import helpers, Elasticsearch
 from kafka import KafkaProducer
-import json
-
 from rediscluster import StrictRedisCluster
 
-from collector import sys_conf, json_encoder
-
+from collector import sys_conf, json_encoder, collect_cct, local_cache
 from collector.collect_filter import CollectFilter
 
 pymysql.install_as_MySQLdb()
-# 定义一个发送状态的本地缓存
-out_stats = {}
+
+
+# 定义一个状态的本地缓存
 
 
 def collect_get_input_data(sql, input_conf):
@@ -44,10 +43,9 @@ def collect_filter(datas, filter_conf):
 
 
 def collect_output(taskid, cct, datas, outputs_conf, suffix):
-    global out_stats
-
     task_state = "%s%s" % (str(cct.__dict__), datas.__len__())
-    if (not out_stats.__contains__(taskid)) or out_stats[taskid] != task_state:
+
+    if (not local_cache.has_local('out_state')) or local_cache.get_local('out_state') != task_state:
         for outputconf in outputs_conf:
 
             if outputconf['type'] == 'elasticsearch':
@@ -60,11 +58,15 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 nodes = [{"host": str(x).split(":")[0], "port": str(x).split(":")[1]} for x in outputconf['nodes']]
                 actions = []
                 i = 1
-                es = Elasticsearch(hosts=nodes,
-                                   http_auth=tuple(outputconf['auth']),
-                                   sniff_on_start=True,
-                                   sniff_on_connection_fail=True,
-                                   sniffer_timeout=60)
+                if local_cache.has_local('es'):
+                    es = local_cache.get_local('es')
+                else:
+                    es = Elasticsearch(hosts=nodes,
+                                       http_auth=tuple(outputconf['auth']),
+                                       sniff_on_start=True,
+                                       sniff_on_connection_fail=True,
+                                       sniffer_timeout=60)
+                    local_cache.set_local('es', es)
 
                 for rec in datas:
                     action = {"_index": str(index).replace("{suffix}", suffix),
@@ -84,9 +86,14 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 logging.info("send to redis start : %s  " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
                 nodes = outputconf['nodes']
-                rc = StrictRedisCluster(
-                    startup_nodes=nodes, skip_full_coverage_check=True,
-                    max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
+
+                if local_cache.has_local('rc'):
+                    rc = local_cache.get_local('rc')
+                else:
+                    rc = StrictRedisCluster(
+                        startup_nodes=nodes, skip_full_coverage_check=True,
+                        max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
+                    local_cache.set_local('rc', rc)
 
                 datatype = outputconf['datatype']
                 key = outputconf['key']
@@ -135,7 +142,13 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
 
                 bootstrap_servers = outputconf['nodes']
                 topic = outputconf['topic']
-                producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+
+                if local_cache.has_local('producer'):
+                    producer = local_cache.get_local('producer')
+                else:
+                    producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+                    local_cache.set_local('producer', producer)
+
                 for rec in datas:
                     producer.send(str(topic).replace("{suffix}", suffix),
                                   json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
@@ -143,4 +156,4 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
 
             else:
                 pass
-        out_stats[taskid] = task_state
+        local_cache.set_local('out_state', task_state)

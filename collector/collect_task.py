@@ -38,7 +38,7 @@ class CollectTask(threading.Thread):
                 cct = collect_cct.get_cct(real_taskid)
                 if not cct:
                     cct = collect_cct.get_conf_args(input_conf)
-                logging.info("%s params: %s " % (real_taskid, cct.__dict__.__str__()))
+                logging.info("%s params: %s " % (real_taskid, cct.__str__()))
                 # 根据 input 获取 链接 以及sql
                 sql = self.get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
                 logging.info("%s has generated  sql %s: " % (real_taskid, sql))

@@ -5,15 +5,13 @@
 from datetime import datetime, timedelta
 
 from rediscluster import StrictRedisCluster
-import threading
-from collector import sys_conf
 
-REDIS_CON = StrictRedisCluster(
+from collector import sys_conf, local_cache
+
+__REDIS_CON = StrictRedisCluster(
     startup_nodes=sys_conf.CCT_REDIS_NODES,
     skip_full_coverage_check=True,
     max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
-
-CCT_LOCAL = threading.local()
 
 
 def get_key(task_id):
@@ -29,8 +27,8 @@ def set_cct(task_id, cct):
         IOError: An error occurred accessing the bigtable.Table object.
 
     """
-    CCT_LOCAL.cct = cct.__dict__;
-    REDIS_CON.set(get_key(task_id), cct.__dict__, sys_conf.CCT_REDIS_EXPIRETIME)
+    local_cache.set_local('cct', cct.__dict__)
+    __REDIS_CON.set(get_key(task_id), cct.__dict__, sys_conf.CCT_REDIS_EXPIRETIME)
 
 
 def get_cct(task_id):
@@ -45,16 +43,13 @@ def get_cct(task_id):
 
     """
     cct = _CctState('', '', False)
-    try:
-        if CCT_LOCAL.cct:
-            cct.__dict__ = CCT_LOCAL.cct
-            return cct
-    except:
-        pass
 
-    cache_cct = REDIS_CON.get(get_key(task_id))
+    if local_cache.has_local('cct'):
+        cct.__dict__ = local_cache.get_local('cct')
+        return cct
+
+    cache_cct = __REDIS_CON.get(get_key(task_id))
     if cache_cct:
-
         cct.__dict__ = eval(cache_cct)
         return cct
     else:
