@@ -60,8 +60,12 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 nodes = [{"host": str(x).split(":")[0], "port": str(x).split(":")[1]} for x in outputconf['nodes']]
                 actions = []
                 i = 1
-                es = Elasticsearch(nodes,
-                                   http_auth=tuple(outputconf['auth']))
+                es = Elasticsearch(hosts=nodes,
+                                   http_auth=tuple(outputconf['auth']),
+                                   sniff_on_start=True,
+                                   sniff_on_connection_fail=True,
+                                   sniffer_timeout=60)
+
                 for rec in datas:
                     action = {"_index": str(index).replace("{suffix}", suffix),
                               "_type": str(doctype).replace("{suffix}", suffix), "_id": rec[docid],
