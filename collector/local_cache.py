@@ -10,7 +10,6 @@ def __sub_local():
     t_id = str(threading.current_thread().ident)
     if not __LOCAL_STATS.__contains__(t_id):
         __LOCAL_STATS[t_id] = {}
-    print(t_id, dict(__LOCAL_STATS.get(t_id)).__str__())
     return dict(__LOCAL_STATS.get(t_id))
 
 
