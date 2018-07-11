@@ -8,6 +8,7 @@ import pymysql
 from elasticsearch import helpers, Elasticsearch
 from kafka import KafkaProducer
 from rediscluster import StrictRedisCluster
+from DBUtils.PooledDB import PooledDB
 
 from collector import sys_conf, json_encoder, collect_cct, local_cache
 from collector.collect_filter import CollectFilter
@@ -20,15 +21,20 @@ __conn_cache = {}
 
 
 def collect_get_input_data(real_taskid, sql, input_conf):
-    cursor = get_mysql_conn(real_taskid, sql, input_conf)
+    if __conn_cache.__contains__(real_taskid):
+        pool = __conn_cache[real_taskid]
+    else:
+        pool = init_pool(real_taskid, sql, input_conf)
+        __conn_cache[real_taskid] = pool
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     cursor.execute(sql)
     return cursor.fetchall()
 
 
-def get_mysql_conn(real_taskid, sql, input_conf):
-    conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    return cursor
+def init_pool(real_taskid, sql, input_conf):
+    pool = PooledDB(pymysql, 10, **input_conf['mysql'])  # 5为连接池里的最少连接数
+    return pool
 
 
 def collect_filter(datas, filter_conf):
