@@ -83,7 +83,7 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                               "_source": rec}
                     i += 1
                     actions.append(action)
-                    if len(actions) == 500:
+                    if len(actions) == 2000:
                         helpers.bulk(es, actions)
                         del actions[0:len(actions)]
 
