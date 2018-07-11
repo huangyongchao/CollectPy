@@ -20,12 +20,7 @@ __conn_cache = {}
 
 
 def collect_get_input_data(real_taskid, sql, input_conf):
-    if __conn_cache.__contains__(real_taskid):
-        cursor = __conn_cache[real_taskid]
-    else:
-        cursor = get_mysql_conn(real_taskid, sql, input_conf)
-        __conn_cache[real_taskid] = cursor
-
+    cursor = get_mysql_conn(real_taskid, sql, input_conf)
     cursor.execute(sql)
     return cursor.fetchall()
 
