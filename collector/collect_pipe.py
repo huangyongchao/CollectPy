@@ -14,31 +14,45 @@ from collector.collect_filter import CollectFilter
 
 pymysql.install_as_MySQLdb()
 
-
 # 定义一个状态的本地缓存
 
+__conn_cache = {}
 
-def collect_get_input_data(sql, input_conf):
-    conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+def collect_get_input_data(real_taskid, sql, input_conf):
+    if __conn_cache.__contains__(real_taskid):
+        cursor = __conn_cache[real_taskid]
+    else:
+        cursor = get_mysql_conn(real_taskid, sql, input_conf)
+        __conn_cache[real_taskid] = cursor
+
     cursor.execute(sql)
     return cursor.fetchall()
 
 
+def get_mysql_conn(real_taskid, sql, input_conf):
+    conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    return cursor
+
+
 def collect_filter(datas, filter_conf):
-    timefmt = (True if (filter_conf['time_fmt']) else False)
-    camelcase = (True if (filter_conf['camel_case'] == 'true') else False)
-    for rec in datas:
-        if timefmt:
-            fmt = filter_conf['time_fmt']['fmt']
-            for field in filter_conf['time_fmt']['fields']:
-                if field in rec and rec[field] != None:
-                    try:
-                        rec[field] = CollectFilter.time_fmt(rec[field], fmt)
-                    except:
-                        rec[field] = None
-        if camelcase:
-            pass
+    if dict(filter_conf).__contains__('time_fmt'):
+        timefmt = (True if (filter_conf['time_fmt']) else False)
+        for rec in datas:
+            if timefmt:
+                fmt = filter_conf['time_fmt']['fmt']
+                for field in filter_conf['time_fmt']['fields']:
+                    if field in rec and rec[field] != None:
+                        try:
+                            rec[field] = CollectFilter.time_fmt(rec[field], fmt)
+                        except:
+                            rec[field] = None
+
+    if dict(filter_conf).__contains__('camel_case'):
+        camelcase = (True if (filter_conf['camel_case'] == 'true') else False)
+        pass
+
     return datas
 
 
@@ -65,7 +79,7 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                                        http_auth=tuple(outputconf['auth']),
                                        sniff_on_start=True,
                                        sniff_on_connection_fail=True,
-                                       sniffer_timeout=60)
+                                       sniffer_timeout=500)
                     local_cache.set_local('es', es)
 
                 for rec in datas:
@@ -74,12 +88,12 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                               "_source": rec}
                     i += 1
                     actions.append(action)
-                    if len(actions) == 2000:
+                    if len(actions) == 500:
                         helpers.bulk(es, actions)
                         del actions[0:len(actions)]
 
                 if len(actions) > 0:
-                    helpers.bulk(es, actions)
+                    helpers.bulk(es, actions, {"timeout": 300})
                 logging.info("send to elasticsearch end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
             elif outputconf['type'] == 'redis':

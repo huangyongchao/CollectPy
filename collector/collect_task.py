@@ -32,7 +32,7 @@ class CollectTask(threading.Thread):
 
             try:
                 real_taskid = "%s-%s" % (taskid, suffix)
-                time.sleep((interval_sec if (interval_sec > 5) else 30))
+                time.sleep((interval_sec if (interval_sec >= 1) else 30))
 
                 # 获取CCT
                 cct = collect_cct.get_cct(real_taskid)
@@ -42,15 +42,17 @@ class CollectTask(threading.Thread):
                 # 根据 input 获取 链接 以及sql
                 sql = self.get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
                 logging.info("%s has generated  sql %s: " % (real_taskid, sql))
+                print("%s has generated  sql %s: " % (real_taskid, sql))
                 # 根据sql获取数据集
-                datas = collect_pipe.collect_get_input_data(sql, input_conf=input_conf)
-                logging.info("%s  has queried data . %s" % (real_taskid,datas.__len__()))
+                datas = collect_pipe.collect_get_input_data(real_taskid,sql, input_conf=input_conf)
+                if datas and datas.__len__()>0:
+                    logging.info("%s  has queried data . %s" % (real_taskid,datas.__len__()))
+                    print("%s  has queried data . %s" % (real_taskid,datas.__len__()))
 
                 # 过滤数据集
                 datas_filtered = collect_pipe.collect_filter(datas, filter_conf=filter_conf)
 
                 logging.info("%s  has filtered data . " % real_taskid)
-
                 # 输出数据集
                 collect_pipe.collect_output(real_taskid,cct,datas_filtered, outputs_conf=outputs_conf,suffix=suffix)
                 # 更新cct
