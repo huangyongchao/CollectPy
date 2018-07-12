@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from rediscluster import StrictRedisCluster
 
 from collector import sys_conf, local_cache
+from collector.collect_filter import CollectFilter
 
 __REDIS_CON = StrictRedisCluster(
     startup_nodes=sys_conf.CCT_REDIS_NODES,
@@ -97,6 +98,13 @@ def update_cct(taskid, cct, datas, tricing_id, tracingtime):
         else:
             pass
     else:
+        first_d = dict(datas[0])
+        if not first_d.__contains__(tracingtime):
+            tracingtime = CollectFilter.camel_case(tracingtime, '_')
+
+        if not first_d.__contains__(tricing_id):
+            tricing_id = CollectFilter.camel_case(tricing_id, '_')
+
         minstmp = datas[0][tracingtime]
         maxstmp = datas[dl - 1][tracingtime]
         maxid = datas[dl - 1][tricing_id]

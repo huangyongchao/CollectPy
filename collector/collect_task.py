@@ -67,17 +67,22 @@ class CollectTask(threading.Thread):
         :param cct:
         :return:
         """
+        if dict(mysql_input).__contains__('pagesize') :
+            page_size  = mysql_input['pagesize']
+        else :
+            page_size  = 1000
+
         sql = str(mysql_input['sql'])
         if cct.and_id:
             condition = ("%s  = '%s' and  %s  > %s  order by %s  asc , %s  asc    limit  %s   " % (
                 mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingid'], cct.tracing_id,
                 mysql_input['tracingtime'],
-                mysql_input['tracingid'], mysql_input['pagesize']))
+                mysql_input['tracingid'], page_size))
             return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
 
         else:
 
             condition = ("%s  >= '%s'  order by %s  asc , %s  asc    limit  %s  " % (
                 mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'],
-                mysql_input['tracingid'], mysql_input['pagesize']))
+                mysql_input['tracingid'], page_size))
             return sql.replace("{conditions}", condition).replace("{suffix}", suffix)

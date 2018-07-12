@@ -15,17 +15,12 @@ from collector.collect_filter import CollectFilter
 
 pymysql.install_as_MySQLdb()
 
-# 定义一个状态的本地缓存
-
+# 连接池的本地缓存
 __conn_cache = {}
 
 
 def collect_get_input_data(real_taskid, sql, input_conf):
-    if __conn_cache.__contains__(real_taskid):
-        pool = __conn_cache[real_taskid]
-    else:
-        pool = init_pool(real_taskid, sql, input_conf)
-        __conn_cache[real_taskid] = pool
+    pool = init_pool(real_taskid, sql, input_conf)
     conn = pool.connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
     cursor.execute(sql)
@@ -33,7 +28,16 @@ def collect_get_input_data(real_taskid, sql, input_conf):
 
 
 def init_pool(real_taskid, sql, input_conf):
-    pool = PooledDB(pymysql, 10, **input_conf['mysql'])  # 5为连接池里的最少连接数
+    try:
+        pool_lock = threading.Lock()
+        pool_lock.acquire()
+        if __conn_cache.__contains__(real_taskid):
+            pool = __conn_cache[real_taskid]
+        else:
+            pool = PooledDB(pymysql, 10, **input_conf['mysql'])  # 5为连接池里的最少连接数
+            __conn_cache[real_taskid] = pool
+    finally:
+        pool_lock.release()
     return pool
 
 
@@ -89,7 +93,7 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                               "_source": rec}
                     i += 1
                     actions.append(action)
-                    if len(actions) == 2000:
+                    if len(actions) == 10000:
                         helpers.bulk(es, actions)
                         del actions[0:len(actions)]
 
