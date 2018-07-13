@@ -3,7 +3,8 @@ import datetime
 import json
 import logging
 import threading
-
+import traceback
+import time
 import pymysql
 from elasticsearch import helpers, Elasticsearch
 from kafka import KafkaProducer
@@ -17,6 +18,76 @@ pymysql.install_as_MySQLdb()
 
 # 连接池的本地缓存
 __conn_cache = {}
+
+
+def processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time, interval_sec, suffix):
+    try:
+        real_taskid = "%s-%s" % (task_id, suffix)
+        time.sleep((interval_sec if (interval_sec >= 1) else 30))
+
+        # 获取CCT
+        cct = collect_cct.get_cct(real_taskid)
+        if not cct:
+            cct = collect_cct.get_conf_args(input_conf)
+        logging.info("%s params: %s " % (real_taskid, cct.__str__()))
+        # 根据 input 获取 链接 以及sql
+        sql = get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
+        logging.info("%s has generated  sql %s: " % (real_taskid, sql))
+        # 根据sql获取数据集
+        datas = collect_get_input_data(real_taskid, sql, input_conf=input_conf)
+        logging.info("%s  has queried data . %s" % (real_taskid, datas.__len__()))
+        print(sql)
+        # 过滤数据集
+        datas_filtered = collect_filter(datas, filter_conf=filter_conf)
+        print(list(datas).__len__())
+        logging.info("%s  has filtered data . " % real_taskid)
+        # 输出数据集
+        collect_output(real_taskid, cct, datas_filtered, outputs_conf=outputs_conf, suffix=suffix)
+        # 更新cct
+        collect_cct.update_cct(real_taskid, cct, datas, tricing_id, tracing_time)
+        logging.info("%s exec over . " % real_taskid)
+    except Exception as e:
+        msg = traceback.format_exc()
+        print("%s exec error  %s " % (real_taskid, msg))
+        logging.error("%s exec error  %s " % (real_taskid, msg))
+
+
+def get_pagesize(mysql_input):
+    if dict(mysql_input).__contains__('pagesize') and int(mysql_input['pagesize']) <= sys_conf.MAX_PAGESIZE:
+        page_size = mysql_input['pagesize']
+    else:
+        page_size = sys_conf.MAX_PAGESIZE
+    return page_size
+
+
+def get_mysql_fmt_sql(mysql_input, cct, suffix):
+    """
+    根据mysql input配置以及cct获取执行的sql
+    :param mysql_input:
+    :param cct:
+    :return:
+    """
+
+    now = (datetime.datetime.now()-5*Sec()).strftime('%Y-%m-%d %H:%M:%S')
+
+    page_size = get_pagesize(mysql_input)
+
+    sql = str(mysql_input['sql'])
+    if cct.and_id:
+        condition = ("%s  = '%s' and %s  < '%s' and   %s  > %s  order by %s  asc , %s  asc    limit  %s   " % (
+            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], now, mysql_input['tracingid'],
+            cct.tracing_id,
+            mysql_input['tracingtime'],
+            mysql_input['tracingid'], page_size))
+        return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
+
+    else:
+
+        condition = ("%s  >= '%s' and %s  < '%s' order by %s  asc , %s  asc    limit  %s  " % (
+            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], now,
+            mysql_input['tracingtime'],
+            mysql_input['tracingid'], page_size))
+        return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
 
 
 def collect_get_input_data(real_taskid, sql, input_conf):
@@ -84,7 +155,7 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                                        http_auth=tuple(outputconf['auth']),
                                        sniff_on_start=True,
                                        sniff_on_connection_fail=True,
-                                       sniffer_timeout=500)
+                                       sniffer_timeout=60)
                     local_cache.set_local('es', es)
 
                 for rec in datas:
@@ -93,12 +164,9 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                               "_source": rec}
                     i += 1
                     actions.append(action)
-                    if len(actions) == 10000:
-                        helpers.bulk(es, actions)
-                        del actions[0:len(actions)]
+                r, errors = helpers.bulk(es, actions)
+                print(r, errors.__len__())
 
-                if len(actions) > 0:
-                    helpers.bulk(es, actions, {"timeout": 300})
                 logging.info("send to elasticsearch end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
             elif outputconf['type'] == 'redis':
