@@ -1,4 +1,7 @@
 #!/bin/bash
-export PYTHONPATH=$PYTHONPATH:/Users/huangyongchao/PycharmProjects/CollectPy1/
-python3  ./collector/main.pyc
-
+cp=`pwd`
+cd  $cp
+source ./venv/bin/activate
+pip install -r requirements.txt
+export PYTHONPATH=$cp
+python ./collector/main.pyc &
