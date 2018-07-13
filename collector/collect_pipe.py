@@ -68,7 +68,7 @@ def get_mysql_fmt_sql(mysql_input, cct, suffix):
     :return:
     """
 
-    now = (datetime.datetime.now()-5*Sec()).strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     page_size = get_pagesize(mysql_input)
 
