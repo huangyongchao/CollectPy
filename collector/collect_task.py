@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # TODO(huangyongchao): 2018-05-16.
 # TODO: task线程类.
+import logging
 import threading
+import traceback
 
 from collector import collect_pipe
 
@@ -26,5 +28,14 @@ class CollectTask(threading.Thread):
         interval_sec = self.task['interval_sec']
         suffix = self.suffix
         while True:
-            collect_pipe.processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time,
-                                   interval_sec,suffix)
+
+            try:
+                collect_pipe.processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time,
+                                       interval_sec, suffix)
+            except Exception as e:
+                msg = traceback.format_exc()
+                print("%s exec error  %s " % (task_id, msg))
+                logging.error("%s exec error  %s " % (task_id, msg))
+                continue
+
+
