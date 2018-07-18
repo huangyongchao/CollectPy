@@ -18,6 +18,7 @@ pymysql.install_as_MySQLdb()
 
 # 连接池的本地缓存
 __conn_cache = {}
+__conn_cache_state = {}
 
 
 def processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time, interval_sec, suffix):
@@ -46,6 +47,11 @@ def processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracin
 
 
 def get_pagesize(mysql_input):
+    """
+    处理默认分页
+    :param mysql_input:
+    :return:
+    """
     if dict(mysql_input).__contains__('pagesize') and int(mysql_input['pagesize']) <= sys_conf.MAX_PAGESIZE:
         page_size = mysql_input['pagesize']
     else:
@@ -83,29 +89,52 @@ def get_mysql_fmt_sql(mysql_input, cct, suffix):
         return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
 
 
-def collect_get_input_data(real_taskid, sql, input_conf):
-    pool = init_pool(real_taskid, sql, input_conf)
-    conn = pool.connection()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    cursor.execute(sql)
-    return cursor.fetchall()
+def collect_get_input_data(taskid, sql, input_conf):
+    """
+    执行mysql查询，增加链接缓存 以及 mysql链接失效重连
+    :param taskid:
+    :param sql:
+    :param input_conf:
+    :return:
+    """
+    if __conn_cache.__contains__(taskid):
+        conn = __conn_cache[taskid]
+    else:
+        conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
+        __conn_cache[taskid] = conn
+
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(sql)
+        return cursor.fetchall()
+    except:
+        conn.ping(bool=True)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(sql)
+        return cursor.fetchall()
 
 
-def init_pool(real_taskid, sql, input_conf):
+def init_pool(taskid, sql, input_conf):
     try:
         pool_lock = threading.Lock()
         pool_lock.acquire()
-        if __conn_cache.__contains__(real_taskid):
-            pool = __conn_cache[real_taskid]
+        if __conn_cache.__contains__(taskid):
+            pool = __conn_cache[taskid]
         else:
-            pool = PooledDB(pymysql, 10, **input_conf['mysql'])  # 5为连接池里的最少连接数
-            __conn_cache[real_taskid] = pool
+            pool = PooledDB(pymysql, 30, **input_conf['mysql'])  # 5为连接池里的最少连接数
+            __conn_cache[taskid] = pool
     finally:
         pool_lock.release()
     return pool
 
 
 def collect_filter(datas, filter_conf):
+    """
+    数据集过滤，目前只增加时间格式过滤，必要的可以在SQL处理
+    :param datas:
+    :param filter_conf:
+    :return:
+    """
     if dict(filter_conf).__contains__('time_fmt'):
         timefmt = (True if (filter_conf['time_fmt']) else False)
         for rec in datas:
@@ -119,6 +148,9 @@ def collect_filter(datas, filter_conf):
                             rec[field] = None
 
     if dict(filter_conf).__contains__('camel_case'):
+        """
+        驼峰命名暂时没有什么高效的方式实现，建议SQL字段直接 别名
+        """
         camelcase = (True if (filter_conf['camel_case'] == 'true') else False)
         pass
 
@@ -158,6 +190,14 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                     i += 1
                     actions.append(action)
                 r, errors = helpers.bulk(es, actions, request_timeout=60)
+
+                if errors.__len__() > 0:
+                    # 如果有失败的数据，增加一次失败重试
+                    try:
+                        helpers.bulk(es, errors, request_timeout=60)
+                        logging.error(errors)
+                    except:
+                        raise Exception()
 
                 logging.info("send to elasticsearch end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
