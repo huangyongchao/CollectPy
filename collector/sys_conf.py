@@ -15,4 +15,4 @@ CCT_REDIS_NODES = __appconf.get("cctredis")["nodes"]
 CCT_REDIS_EXPIRETIME = __appconf.get("cctredis")["expire_seconds"]
 CCT_REDIS_MAX_CONNECTIONS = __appconf.get("cctredis")["max_connections"]
 CCT_PREFIX = __appconf.get("cctredis")["prefix"]
-MAX_PAGESIZE = 10000
+MAX_PAGESIZE = 100000

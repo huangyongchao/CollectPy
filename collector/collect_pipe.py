@@ -23,16 +23,18 @@ __conn_cache_state = {}
 
 def processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time, interval_sec, suffix):
     real_taskid = "%s-%s" % (task_id, suffix)
-    time.sleep((interval_sec if (interval_sec >= 1) else 30))
+    time.sleep((interval_sec if (interval_sec >= 5) else 30))
 
     # 获取CCT
     cct = collect_cct.get_cct(real_taskid)
     if not cct:
         cct = collect_cct.get_conf_args(input_conf)
     logging.info("%s params: %s " % (real_taskid, cct.__str__()))
+
     # 根据 input 获取 链接 以及sql
     sql = get_mysql_fmt_sql(input_conf, cct, suffix=suffix)
     logging.info("%s has generated  sql %s: " % (real_taskid, sql))
+
     # 根据sql获取数据集
     datas = collect_get_input_data(real_taskid, sql, input_conf=input_conf)
     logging.info("%s  has queried data . %s" % (real_taskid, datas.__len__()))
@@ -104,11 +106,15 @@ def collect_get_input_data(taskid, sql, input_conf):
         __conn_cache[taskid] = conn
 
     try:
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        if __conn_cache.__contains__(taskid + "cursor"):
+            cursor = __conn_cache[taskid + "cursor"]
+        else:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            __conn_cache[taskid + "cursor"] = cursor
         cursor.execute(sql)
         return cursor.fetchall()
     except:
-        conn.ping(bool=True)
+        conn.ping()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute(sql)
         return cursor.fetchall()

@@ -4,10 +4,13 @@
 
 import json
 import logging
-import sys
 
-from collector import web_console, sys_conf
-from collector.collect_task import CollectTask
+import time
+
+import os
+
+from collector import sys_conf
+from collector.collect_task import run_task
 
 
 def init_log():
@@ -54,12 +57,14 @@ def start_task(taskconf):
     for task in list(taskconf):
         if "suffix" in task["input"]:
             for suffix in task["input"]["suffix"]:
-                task_thread = CollectTask(task, suffix=suffix)
-                task_thread.start()
+                run_task(task, suffix)
+
         else:
-            task_thread = CollectTask(task, "")
-            task_thread.start()
+            run_task(task, "")
+
     logging.info("tasks started !")
+    os.wait()
+
 
 
 def launcher():
@@ -77,6 +82,6 @@ def launcher():
 
 if __name__ == '__main__':
     # 打印环境变量目录
-    print(sys.path)
     launcher()
-    web_console.start_console()
+    print("application has started ……")
+    # web_console.start_console()
