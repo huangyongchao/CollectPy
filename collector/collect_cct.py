@@ -28,8 +28,12 @@ def set_cct(task_id, cct):
         IOError: An error occurred accessing the bigtable.Table object.
 
     """
-    local_cache.set_local('cct', cct.__dict__)
+    local_cache.set_local(task_id, 'cct', cct.__dict__)
     __REDIS_CON.set(get_key(task_id), cct.__dict__, sys_conf.CCT_REDIS_EXPIRETIME)
+
+
+def get_redis_cct(task_id):
+    return __REDIS_CON.get(get_key(task_id))
 
 
 def get_cct(task_id):
@@ -45,8 +49,8 @@ def get_cct(task_id):
     """
     cct = _CctState('', '', False)
 
-    if local_cache.has_local('cct'):
-        cct.__dict__ = local_cache.get_local('cct')
+    if local_cache.has_local(task_id, 'cct'):
+        cct.__dict__ = local_cache.get_local(task_id, 'cct')
         return cct
 
     cache_cct = __REDIS_CON.get(get_key(task_id))
@@ -110,11 +114,11 @@ def update_cct(taskid, cct, datas, tricing_id, tracingtime):
         maxid = datas[dl - 1][tricing_id]
         if minstmp == maxstmp:
             cct.and_id = True
-            cct.tracing_time = minstmp
+            cct.tracing_time = maxstmp.strftime("%Y-%m-%d %H:%M:%S")
             cct.tracing_id = maxid
         else:
             cct.and_id = False
-            cct.tracing_time = maxstmp
+            cct.tracing_time =  maxstmp.strftime("%Y-%m-%d %H:%M:%S")
             cct.tracing_id = -1
     set_cct(taskid, cct)
     return cct

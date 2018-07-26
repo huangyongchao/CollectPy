@@ -1,0 +1,109 @@
+[
+  {
+    "taskid": "test4",
+    "interval_sec": 10,
+    "input": {
+      "mysql": {
+        "host": "172.16.18.119",
+        "port": 3306,
+        "user": "hyctest",
+        "passwd": "hyctest",
+        "db": "hyc_bs"
+      },
+      "pagesize": "5",
+      "tracingid": "id",
+      "tracingtime": "update_time",
+      "tracingid_val": "-1",
+      "tracingtime_val": "2017-01-01",
+      "suffix":["1803","1804","1805"],
+      "sql": "select * from  cps_effect_confirm_log_{suffix} where  {conditions}"
+    },
+    "filter": {
+      "time_fmt": {
+        "fields": ["update_time","create_time","confirm_time","click_time","settlement_time","submit_time","start_date","end_date"],
+        "fmt": "%Y-%m-%d %H:%M:%S"
+      },
+      "exclude":{
+        "fields": ["update_time","create_time"],
+        "fuzzy":true,
+        "keyword":""
+      },
+      "include":{
+        "fields": ["update_time","create_time"],
+        "fuzzy":true,
+        "keyword":""
+      }
+
+    },
+    "outputs": [
+      {
+        "type": "elasticsearch",
+        "nodes": ["221.122.221.201: 9200", "221.122.221.101: 9200","221.122.221.68: 9200"],
+        "auth": "elastic,changeme",
+        "index": "logstash_order_test{suffix}",
+        "doctype": "doc",
+        "routing": "id",
+        "parent" : "id" ,
+        "docid": "id"
+      },
+      {
+        "type": "kafka",
+        "nodes": [ "221.122.221.54:9092","221.122.221.22:9092","221.122.221.58:9092"],
+        "topic": "order_test"
+      },
+      {
+        "type": "redis",
+        "desc":"name, value, ex=None,key  values time",
+        "nodes": [{"host": "221.122.127.68","port": "16660"}],
+        "multi-cmds":[
+           {"condition": {"field":"id","op":">","value":"10"}, "commands": [{"cmd": "setex", "args": {"name":"aaa","value":"bbb","time":200}}]}
+        ]
+      },{
+         "type": "mysql",
+         "mysql": {
+            "host": "172.16.18.119",
+            "port": 3306,
+            "user": "hyctest",
+            "passwd": "hyctest",
+            "db": "hyc_bs"
+         },
+         "table": "test_table",
+         "conflict": "replace|ignore"
+      }
+    ]
+  },
+  {
+    "taskid": "order-p61",
+    "interval_sec": 5,
+    "input": {
+      "mysql": {
+        "host": "221.122.127.113",
+        "port": 3306,
+        "user": "yqftsread",
+        "passwd": "yadfaxx5da",
+        "db": "hyc_bs"
+      },
+      "pagesize": "10000",
+      "tracingid": "id",
+      "tracingtime": "update_time",
+      "tracingid_val": "-1",
+      "tracingtime_val": "2018-07-19 15:00:00",
+      "sql": "select * from  cps_effect_confirm_log_1807 where   {conditions}"
+    },
+    "filter": {},
+    "outputs": [
+     {
+         "type": "mysql",
+         "mysql": {
+            "host": "172.16.18.119",
+            "port": 3306,
+            "user": "hyctest",
+            "passwd": "hyctest",
+            "db": "hyc_bs"
+         },
+         "table": "cps_effect_confirm_log_1805",
+         "conflict": "ignore"
+      }
+    ]
+  }
+]

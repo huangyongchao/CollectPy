@@ -4,10 +4,17 @@
 import json
 from _decimal import Decimal
 
+from datetime import datetime, date
+
+
 class OutputEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
-            return "%.2f" % obj
+            return "%.4f" % obj
+        if isinstance(obj, datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        if isinstance(obj, date):
+            return obj.strftime("%Y-%m-%d")
         if isinstance(obj, None):
             return ''
         return json.JSONEncoder.default(self, obj)

@@ -1,56 +1,30 @@
 [
-  {
-    "taskid": "test4",
-    "interval_sec": 10,
+    {
+    "taskid": "product-product-2",
+    "interval_sec": 5,
     "input": {
       "mysql": {
-        "host": "172.16.18.119",
+        "host": "221.122.221.153",
         "port": 3306,
-        "user": "yiqifatest",
-        "passwd": "yiqifatest",
-        "db": "yiqifa_bs"
+        "user": "hyc_read",
+        "passwd": "hyc2016Emar",
+        "db": "hyc_haitao"
       },
-      "pagesize": "5",
+      "pagesize": "11",
       "tracingid": "id",
       "tracingtime": "update_time",
       "tracingid_val": "-1",
-      "tracingtime_val": "2017-01-01",
-      "suffix":["1803","1804","1805"],
-      "sql": "select * from  cps_effect_confirm_log_{suffix} where  {conditions}"
+      "tracingtime_val": "2011-07-19 15:00:00",
+      "sql": "select MD5(id) as es_id_md5 , id  as es_id ,s.* from complete_product s where   {conditions}"
     },
-    "filter": {
-      "time_fmt": {
-        "fields": ["update_time","create_time","confirm_time","click_time","settlement_time","submit_time","start_date","end_date"],
-        "fmt": "%Y-%m-%d %H:%M:%S"
-      },
-      "camel_case": true
-    },
+    "filter": {},
     "outputs": [
       {
-        "type": "elasticsearch",
-        "nodes": ["221.122.221.201: 9200", "221.122.221.101: 9200","221.122.221.68: 9200"],
-        "auth": "elastic,changeme",
-        "index": "logstash_order_test{suffix}",
-        "doctype": "doc",
-        "docid": "id"
-      },
-      {
-        "type": "kafka",
-        "nodes": [ "221.122.221.54:9092","221.122.221.22:9092","221.122.221.58:9092"],
-        "topic": "order_test"
-      },
-      {
         "type": "redis",
-        "nodes": ["221.122.221.103: 14000", "221.122.221.127:14000"],
-        "datatype": "string",
-        "key": "{suffix}_order:%s%s",
-        "keyfields":["order_no","product_no"],
-        "expiresec":1600,
-        "hkey": "pd:%s",
-        "hkeyfields": "pd:%s",
-        "valuetype":"json"
-
-
+        "nodes": [{"host": "221.122.221.68","port": "16660"}],
+        "multi-cmds":[
+           {"condition": {"field":"id","op":">","value":"10"}, "commands": [{"cmd": "setex", "args": {"name":"aaa","value":"bbb","time":200}}]}
+        ]
       }
     ]
   }

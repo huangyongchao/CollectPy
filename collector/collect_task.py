@@ -10,6 +10,10 @@ from multiprocessing import Process
 from collector import collect_pipe
 
 
+def get_real_task_id(task_id, suffix):
+    return "%s-%s" % (task_id, suffix)
+
+
 def run_task(task, suffix):
     task_id = task['taskid']
     group = "collector"

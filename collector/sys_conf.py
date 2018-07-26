@@ -15,4 +15,6 @@ CCT_REDIS_NODES = __appconf.get("cctredis")["nodes"]
 CCT_REDIS_EXPIRETIME = __appconf.get("cctredis")["expire_seconds"]
 CCT_REDIS_MAX_CONNECTIONS = __appconf.get("cctredis")["max_connections"]
 CCT_PREFIX = __appconf.get("cctredis")["prefix"]
-MAX_PAGESIZE = 100000
+MAX_PAGESIZE = __appconf.get("mysqlinput")["max_pagesize"]
+# mysql查询数据的时间戳延迟，避免出现当前时间误差
+DELAY_SECONDS = __appconf.get("mysqlinput")["query_delay_seconds"]

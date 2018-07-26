@@ -3,10 +3,14 @@ webconsole:
 logging:
   "level": "INFO"
 cctredis:
-  "nodes": [{"host": "221.122.127.103","port": "14000"},{"host": "221.122.127.127","port": "14000"}]
-  "expire_seconds": 20000
-  "max_connections": 20
+  "nodes": [{"host": "221.122.127.68","port": "16660"}]
+  "expire_seconds": 172800
+  "max_connections": 60
   "prefix": "collect_py_"
+mysqlinput:
+  max_pagesize : 10000
+  query_delay_seconds : 5
+
 
 
 

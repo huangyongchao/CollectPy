@@ -9,7 +9,7 @@ import time
 
 import os
 
-from collector import sys_conf
+from collector import sys_conf, web_console
 from collector.collect_task import run_task
 
 
@@ -63,7 +63,7 @@ def start_task(taskconf):
             run_task(task, "")
 
     logging.info("tasks started !")
-    os.wait()
+    #os.wait()
 
 
 
@@ -84,4 +84,4 @@ if __name__ == '__main__':
     # 打印环境变量目录
     launcher()
     print("application has started ……")
-    # web_console.start_console()
+    web_console.start_console()

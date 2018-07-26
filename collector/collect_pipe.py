@@ -11,7 +11,7 @@ from kafka import KafkaProducer
 from rediscluster import StrictRedisCluster
 from DBUtils.PooledDB import PooledDB
 
-from collector import sys_conf, json_encoder, collect_cct, local_cache
+from collector import sys_conf, json_encoder, collect_cct, local_cache, collect_task, output_mysql, output_redis
 from collector.collect_filter import CollectFilter
 
 pymysql.install_as_MySQLdb()
@@ -22,7 +22,7 @@ __conn_cache_state = {}
 
 
 def processor(task_id, input_conf, filter_conf, outputs_conf, tricing_id, tracing_time, interval_sec, suffix):
-    real_taskid = "%s-%s" % (task_id, suffix)
+    real_taskid = collect_task.get_real_task_id(task_id, suffix)
     time.sleep((interval_sec if (interval_sec >= 5) else 30))
 
     # 获取CCT
@@ -61,6 +61,12 @@ def get_pagesize(mysql_input):
     return page_size
 
 
+def get_limit_stmp():
+    now = datetime.datetime.now()
+    limit_stmp = now + datetime.timedelta(seconds=-sys_conf.DELAY_SECONDS)
+    return limit_stmp.strftime('%Y-%m-%d %H:%M:%S')
+
+
 def get_mysql_fmt_sql(mysql_input, cct, suffix):
     """
     根据mysql input配置以及cct获取执行的sql
@@ -68,15 +74,13 @@ def get_mysql_fmt_sql(mysql_input, cct, suffix):
     :param cct:
     :return:
     """
-
-    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
     page_size = get_pagesize(mysql_input)
 
     sql = str(mysql_input['sql'])
     if cct.and_id:
         condition = ("%s  = '%s' and %s  < '%s' and   %s  > %s  order by %s  asc , %s  asc    limit  %s   " % (
-            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], now, mysql_input['tracingid'],
+            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], get_limit_stmp(),
+            mysql_input['tracingid'],
             cct.tracing_id,
             mysql_input['tracingtime'],
             mysql_input['tracingid'], page_size))
@@ -85,7 +89,7 @@ def get_mysql_fmt_sql(mysql_input, cct, suffix):
     else:
 
         condition = ("%s  >= '%s' and %s  < '%s' order by %s  asc , %s  asc    limit  %s  " % (
-            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], now,
+            mysql_input['tracingtime'], cct.tracing_time, mysql_input['tracingtime'], get_limit_stmp(),
             mysql_input['tracingtime'],
             mysql_input['tracingid'], page_size))
         return sql.replace("{conditions}", condition).replace("{suffix}", suffix)
@@ -99,18 +103,9 @@ def collect_get_input_data(taskid, sql, input_conf):
     :param input_conf:
     :return:
     """
-    if __conn_cache.__contains__(taskid):
-        conn = __conn_cache[taskid]
-    else:
-        conn = pymysql.connect(use_unicode=True, charset='utf8', **input_conf['mysql'])
-        __conn_cache[taskid] = conn
-
     try:
-        if __conn_cache.__contains__(taskid + "cursor"):
-            cursor = __conn_cache[taskid + "cursor"]
-        else:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-            __conn_cache[taskid + "cursor"] = cursor
+        conn = pymysql.connect(use_unicode=True, charset="utf8", **input_conf['mysql'])
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute(sql)
         return cursor.fetchall()
     except:
@@ -166,7 +161,7 @@ def collect_filter(datas, filter_conf):
 def collect_output(taskid, cct, datas, outputs_conf, suffix):
     task_state = "%s%s" % (str(cct.__dict__), datas.__len__())
 
-    if (not local_cache.has_local('out_state')) or local_cache.get_local('out_state') != task_state:
+    if (not local_cache.has_local(taskid, 'out_state')) or local_cache.get_local(taskid, 'out_state') != task_state:
         for outputconf in outputs_conf:
 
             if outputconf['type'] == 'elasticsearch':
@@ -176,23 +171,40 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 index = outputconf['index']
                 doctype = outputconf['doctype']
                 docid = outputconf['docid']
+                routing = None
+                parent = None
+                if dict(outputconf).__contains__("routing"):
+                    routing = outputconf['routing']
+                if dict(outputconf).__contains__("parent"):
+                    parent = outputconf['parent']
+
                 nodes = [{"host": str(x).split(":")[0], "port": str(x).split(":")[1]} for x in outputconf['nodes']]
                 actions = []
                 i = 1
-                if local_cache.has_local('es'):
-                    es = local_cache.get_local('es')
-                else:
-                    es = Elasticsearch(hosts=nodes,
-                                       http_auth=tuple(outputconf['auth']),
-                                       sniff_on_start=True,
-                                       sniff_on_connection_fail=True,
-                                       sniffer_timeout=60)
-                    local_cache.set_local('es', es)
-
+                # if local_cache.has_local(taskid, 'es'):
+                #     es = local_cache.get_local(taskid, 'es')
+                # else:
+                #     es = Elasticsearch(hosts=nodes,
+                #                        http_auth=tuple(outputconf['auth']),
+                #                        sniff_on_start=True,
+                #                        sniff_on_connection_fail=True,
+                #                        sniffer_timeout=60)
+                #     local_cache.set_local(taskid, 'es', es)
+                es = Elasticsearch(hosts=nodes,
+                                   http_auth=tuple(outputconf['auth']),
+                                   sniff_on_start=True,
+                                   sniff_on_connection_fail=True,
+                                   sniffer_timeout=60)
+                local_cache.set_local(taskid, 'es', es)
                 for rec in datas:
                     action = {"_index": str(index).replace("{suffix}", suffix),
                               "_type": str(doctype).replace("{suffix}", suffix), "_id": rec[docid],
-                              "_source": rec}
+                              "_source": json.dumps(rec, cls=json_encoder.OutputEncoder,
+                                                    ensure_ascii=False)}
+                    if routing:
+                        action["_routing"] = rec[routing]
+                    if parent:
+                        action["_parent"] = rec[parent]
                     i += 1
                     actions.append(action)
                 r, errors = helpers.bulk(es, actions, request_timeout=60)
@@ -208,57 +220,10 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 logging.info("send to elasticsearch end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
             elif outputconf['type'] == 'redis':
+
                 logging.info("send to redis start : %s  " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-                nodes = outputconf['nodes']
-
-                if local_cache.has_local('rc'):
-                    rc = local_cache.get_local('rc')
-                else:
-                    rc = StrictRedisCluster(
-                        startup_nodes=nodes, skip_full_coverage_check=True,
-                        max_connections=sys_conf.CCT_REDIS_MAX_CONNECTIONS)
-                    local_cache.set_local('rc', rc)
-
-                datatype = outputconf['datatype']
-                key = outputconf['key']
-                keyfields = outputconf['keyfields']
-                hkey = outputconf['hkey']
-                hkeyfields = outputconf['hkeyfields']
-                valuetype = outputconf['valuetype']
-                expiresec = outputconf['expiresec']
-                for rec in datas:
-
-                    realk = key
-                    n = str(key).count("%s")
-                    if n > 0:
-                        kf = ''
-                        for f in keyfields[0:n]:
-                            kf += ",'" + ("" if (rec[f] == None) else rec[f]) + "'"
-                        realk = eval("'" + key + "'" + " %( " + kf[1: kf.__len__()] + ") ")
-
-                    realk = str(realk).replace("{suffix}", suffix)
-
-                    if datatype == "string":
-                        if valuetype == "json":
-                            if expiresec and (expiresec > 0):
-                                rc.set(realk,
-                                       json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode(),
-                                       ex=expiresec)
-                            else:
-                                rc.set(realk,
-                                       json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
-
-
-                    elif datatype == "hash":
-                        if valuetype == "json":
-                            pass
-                    elif datatype == "list":
-                        if valuetype == "json":
-                            pass
-                    elif datatype == "set":
-                        if valuetype == "json":
-                            pass
+                output_redis.out_put(taskid, outputconf, datas)
 
                 logging.info("send to redis end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -268,17 +233,21 @@ def collect_output(taskid, cct, datas, outputs_conf, suffix):
                 bootstrap_servers = outputconf['nodes']
                 topic = outputconf['topic']
 
-                if local_cache.has_local('producer'):
-                    producer = local_cache.get_local('producer')
-                else:
-                    producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
-                    local_cache.set_local('producer', producer)
+                # if local_cache.has_local(taskid, 'producer'):
+                #     producer = local_cache.get_local(taskid, 'producer')
+                # else:
+                #     producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+                #     local_cache.set_local(taskid, 'producer', producer)
+                producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
                 for rec in datas:
                     producer.send(str(topic).replace("{suffix}", suffix),
                                   json.dumps(rec, cls=json_encoder.OutputEncoder, ensure_ascii=False).encode())
                 logging.info("send to kafka end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-            else:
-                pass
-        local_cache.set_local('out_state', task_state)
+            elif outputconf['type'] == 'mysql':
+
+                logging.info("send to mysql start : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                output_mysql.out_put(outputconf, datas)
+                logging.info("send to mysql end : %s " % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        local_cache.set_local(taskid, 'out_state', task_state)

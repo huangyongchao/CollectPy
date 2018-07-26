@@ -6,23 +6,21 @@ import threading
 __LOCAL_STATS = {}
 
 
-def __sub_local():
-    t_id = str(threading.current_thread().ident)
-    if not __LOCAL_STATS.__contains__(t_id):
-        __LOCAL_STATS[t_id] = {}
-    return dict(__LOCAL_STATS.get(t_id))
+def sub_local(taskid):
+    if not __LOCAL_STATS.__contains__(taskid):
+        __LOCAL_STATS[taskid] = {}
+    return dict(__LOCAL_STATS.get(taskid))
 
 
-def set_local(sub_key, value):
-    t_id = str(threading.current_thread().ident)
-    l = __sub_local()
+def set_local(taskid, sub_key, value):
+    l = sub_local(taskid)
     l[sub_key] = value
-    __LOCAL_STATS[t_id] = l
+    __LOCAL_STATS[taskid] = l
 
 
-def get_local(sub_key):
-    return __sub_local()[sub_key]
+def get_local(taskid, sub_key):
+    return sub_local(taskid)[sub_key]
 
 
-def has_local(sub_key):
-    return __sub_local().__contains__(sub_key)
+def has_local(taskid, sub_key):
+    return sub_local(taskid).__contains__(sub_key)
